@@ -1,16 +1,33 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { createRequire } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Client, Collection, GatewayIntentBits } from 'discord.js';
+import { Player } from 'discord-player';
+import { YouTubeDlpExtractor, setYtDlpPath, setFFmpegPath } from 'discord-player-youtubedlp';
 import 'dotenv/config';
+
+// Ustawienie ścieżek do bundlowanych binarnych (yt-dlp + ffmpeg)
+const require = createRequire(import.meta.url);
+const ytdlpPath = path.resolve('node_modules', 'ytdlp-nodejs', 'bin', 'yt-dlp.exe');
+const ffmpegPath = require('ffmpeg-static');
+setYtDlpPath(ytdlpPath);
+setFFmpegPath(ffmpegPath);
+console.log('[PATHS] yt-dlp:', ytdlpPath);
+console.log('[PATHS] ffmpeg:', ffmpegPath);
 
 // Definiowanie __dirname dla ES Modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Inicjalizacja klienta bota z uprawnieniami (Intents)
-// Guilds jest wymagane do poprawnego działania bota na serwerach
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+// GuildVoiceStates jest wymagane do obsługi kanałów głosowych
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildVoiceStates,
+  ],
+});
 
 // Kolekcja przechowująca komendy bota
 client.commands = new Collection();
@@ -85,12 +102,30 @@ async function loadEvents() {
 async function startBot() {
   await loadCommands();
   await loadEvents();
-  
+
   if (!process.env.DISCORD_TOKEN || process.env.DISCORD_TOKEN === 'your_bot_token_here') {
     console.error('[CRITICAL] Brak poprawnego tokenu DISCORD_TOKEN w pliku .env!');
     process.exit(1);
   }
-  
+
+  // Inicjalizacja discord-player
+  const player = new Player(client);
+
+  // Wymagane handlery błędów (discord-player v7)
+  player.events.on('playerError', (queue, error) => {
+    console.error('[PLAYER ERROR]', error.message);
+  });
+  player.events.on('error', (queue, error) => {
+    console.error('[QUEUE ERROR]', error.message);
+  });
+
+  await player.extractors.register(YouTubeDlpExtractor, {
+    // Wyłączamy automatyczne wykrywanie przeglądarki do cookies
+    // (domyślnie próbuje Edge co powoduje HTTP 403)
+    agent: { autoCookiesFromBrowser: false },
+  });
+  console.log('[PLAYER] discord-player zainicjalizowany z ekstraktorem YouTubeDlp.');
+
   client.login(process.env.DISCORD_TOKEN);
 }
 
