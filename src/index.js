@@ -5,11 +5,13 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Client, Collection, GatewayIntentBits } from 'discord.js';
 import { Player } from 'discord-player';
 import { YouTubeDlpExtractor, setYtDlpPath, setFFmpegPath } from 'discord-player-youtubedlp';
+import { helpers } from 'ytdlp-nodejs';
 import 'dotenv/config';
+import { updatePanel } from './utils/panelHelper.js';
 
 // Ustawienie ścieżek do bundlowanych binarnych (yt-dlp + ffmpeg)
 const require = createRequire(import.meta.url);
-const ytdlpPath = path.resolve('node_modules', 'ytdlp-nodejs', 'bin', 'yt-dlp.exe');
+const ytdlpPath = helpers.findYtdlpBinary() || path.resolve('node_modules', 'ytdlp-nodejs', 'bin', process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp');
 const ffmpegPath = require('ffmpeg-static');
 setYtDlpPath(ytdlpPath);
 setFFmpegPath(ffmpegPath);
@@ -26,6 +28,8 @@ const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildVoiceStates,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
   ],
 });
 
@@ -117,6 +121,31 @@ async function startBot() {
   });
   player.events.on('error', (queue, error) => {
     console.error('[QUEUE ERROR]', error.message);
+  });
+
+  // Integracja panelu sterowania z cyklem życia odtwarzacza
+  player.events.on('playerStart', (queue, track) => {
+    if (queue.metadata && queue.metadata.channel) {
+      updatePanel(queue.metadata.channel.guild);
+    }
+  });
+
+  player.events.on('emptyQueue', (queue) => {
+    if (queue.metadata && queue.metadata.channel) {
+      updatePanel(queue.metadata.channel.guild);
+    }
+  });
+
+  player.events.on('disconnect', (queue) => {
+    if (queue.metadata && queue.metadata.channel) {
+      updatePanel(queue.metadata.channel.guild);
+    }
+  });
+
+  player.events.on('emptyChannel', (queue) => {
+    if (queue.metadata && queue.metadata.channel) {
+      updatePanel(queue.metadata.channel.guild);
+    }
   });
 
   await player.extractors.register(YouTubeDlpExtractor, {

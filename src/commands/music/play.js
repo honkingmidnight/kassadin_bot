@@ -37,6 +37,7 @@ export default {
 
     try {
       const { track } = await player.play(voiceChannel, query, {
+        requestedBy: interaction.user,
         nodeOptions: {
           metadata: {
             channel: interaction.channel,

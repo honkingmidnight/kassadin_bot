@@ -1,8 +1,19 @@
 import { Events, MessageFlags } from 'discord.js';
+import { handleButton } from '../utils/buttonHandler.js';
 
 export default {
   name: Events.InteractionCreate,
   async execute(interaction) {
+    // Obsługa przycisków panelu sterowania
+    if (interaction.isButton()) {
+      try {
+        await handleButton(interaction);
+      } catch (error) {
+        console.error('[BUTTON ERROR] Błąd podczas obsługi przycisku:', error);
+      }
+      return;
+    }
+
     // Interesują nas tylko interakcje będące komendami ukośnika (Slash Commands)
     if (!interaction.isChatInputCommand()) return;
 

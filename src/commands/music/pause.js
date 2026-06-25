@@ -1,5 +1,6 @@
 import { SlashCommandBuilder, MessageFlags } from 'discord.js';
 import { useTimeline } from 'discord-player';
+import { updatePanel } from '../../utils/panelHelper.js';
 
 export default {
   data: new SlashCommandBuilder()
@@ -18,6 +19,8 @@ export default {
 
     const wasPaused = timeline.paused;
     wasPaused ? timeline.resume() : timeline.pause();
+
+    await updatePanel(interaction.guild);
 
     return interaction.reply({
       content: wasPaused ? '▶️ Wznowiono odtwarzanie!' : '⏸️ Wstrzymano odtwarzanie!',
