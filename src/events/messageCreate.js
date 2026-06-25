@@ -40,7 +40,7 @@ export default {
       // Wyślij informację o wyszukiwaniu, którą usuniemy po dodaniu piosenki
       const loadingMsg = await message.channel.send(`🔍 Wyszukiwanie: \`${query}\`...`);
 
-      const { track } = await player.play(voiceChannel, query, {
+      const { track, searchResult } = await player.play(voiceChannel, query, {
         requestedBy: message.author,
         nodeOptions: {
           metadata: {
@@ -60,8 +60,13 @@ export default {
       // Usuwamy komunikat o wyszukiwaniu
       await loadingMsg.delete().catch(() => null);
 
+      const isPlaylist = !!searchResult.playlist;
+      const responseText = isPlaylist
+        ? `✅ Dodano playlistę **${searchResult.playlist.title}** (${searchResult.tracks.length} utworów) do kolejki!`
+        : `✅ Dodano **${track.title}** do kolejki!`;
+
       // Wysyłamy informację o dodaniu do kolejki i usuwamy ją po 5 sekundach
-      const successMsg = await message.channel.send(`✅ Dodano **${track.title}** do kolejki!`);
+      const successMsg = await message.channel.send(responseText);
       setTimeout(() => successMsg.delete().catch(() => null), 5000);
 
     } catch (error) {

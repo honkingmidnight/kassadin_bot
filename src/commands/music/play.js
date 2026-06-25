@@ -36,7 +36,7 @@ export default {
     }
 
     try {
-      const { track } = await player.play(voiceChannel, query, {
+      const { track, searchResult } = await player.play(voiceChannel, query, {
         requestedBy: interaction.user,
         nodeOptions: {
           metadata: {
@@ -53,17 +53,31 @@ export default {
         },
       });
 
+      const isPlaylist = !!searchResult.playlist;
       const embed = new EmbedBuilder()
         .setColor(0x5865f2)
-        .setTitle('🎵 Dodano do kolejki')
-        .setDescription(`**[${track.title}](${track.url})**`)
-        .addFields(
+        .setTitle(isPlaylist ? '🎵 Dodano playlistę' : '🎵 Dodano do kolejki')
+        .setDescription(
+          isPlaylist
+            ? `**[${searchResult.playlist.title}](${searchResult.playlist.url})**`
+            : `**[${track.title}](${track.url})**`
+        )
+        .setThumbnail(isPlaylist ? (searchResult.playlist.thumbnail?.url || searchResult.playlist.thumbnail || track.thumbnail) : track.thumbnail)
+        .setFooter({ text: 'discord-player • yt-dlp' });
+
+      if (isPlaylist) {
+        embed.addFields(
+          { name: '📋 Liczba utworów', value: `${searchResult.tracks.length}`, inline: true },
+          { name: '👤 Autor playlisty', value: searchResult.playlist.author?.name || 'Nieznany', inline: true },
+          { name: '🙋 Dodane przez', value: `${interaction.user}`, inline: true }
+        );
+      } else {
+        embed.addFields(
           { name: '👤 Autor', value: track.author || 'Nieznany', inline: true },
           { name: '⏱️ Czas', value: track.duration || 'Live', inline: true },
-          { name: '🙋 Dodane przez', value: `${interaction.user}`, inline: true },
-        )
-        .setThumbnail(track.thumbnail)
-        .setFooter({ text: 'discord-player • yt-dlp' });
+          { name: '🙋 Dodane przez', value: `${interaction.user}`, inline: true }
+        );
+      }
 
       return interaction.editReply({ embeds: [embed] });
     } catch (error) {
